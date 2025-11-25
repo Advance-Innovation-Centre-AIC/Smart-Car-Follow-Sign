@@ -1,4 +1,207 @@
-1.dataset มีการถ่ายภาพป้ายจราจรทั้ง4ป้ายหลายๆมุมจากโทรศัพท์และอัพโหลดลงในคอมพิวเตอร์แล้วนำไปสร้างเป็นdatasetออกมาโดยการใช้Label-Studio โดยจะทำการตีกรอบlabelที่รูปป้ายจราจรในแต่ละภาพ และExportไฟล์ที่ทำLabelเสร็จแล้วไปTrain ใน Google Colab
-2.Test ทำการทดสอบการเปิด-ปิดกล้อง และทำการเช็คการตรวจจับYOLO และทำการหาค่า F1Score
-3.ทำการเขียนโค้ด Car code เป็นโค้ดที่กล้องตรวจจับป้าย เมื่อเจอป้ายก็จะทำตามคำสั่งของป้าย โดยมีสถานะเริ่มต้นคือรถหยุดอยู่กับที่ มีการใช้ do inference ใช้ควบคุมความเร็วในการประมวลผลและความแม่นยำในการตรวจจับ และถ้ามีกรณีทั้งป้ายซ้ายและขวา จะเป็นกรณีพิเศษ ต้องใช้เทคนิค Template matching ในการเทียบกับป้ายต้นแบบ เพื่อหาคะแนนรวมสูงสุดว่ารถจะทำตามคำสั่งป้ายซ้ายหรือขวาแทนการใช้YOLOในการตัดสิน
-4.ผลการทดสอบ มีการทดสอบตัวรถสามารถวิ่งตามป้ายที่detectเจอได้หรือไม่ แม่นยำแค่ไหน และทดสอบจริงว่าได้ผลลัพธ์ตามที่ต้องการหรือไม่
+## Smart car follow signs 
+
+รถเดินตามป้ายจราจรขนาดเล็กบนบอร์ด Raspberry Pi โดยอาศัยเทคโนโลยีอัลกอริทึมตรวจจับวัตถุและใช้กล้องควบคู่กับเทคโนโลยีทำให้ระบบประมวลผลภาพแบบเรียลไทม์จากกล้องในการตรวจจับและจำแนกป้ายจราจร  ที่ติดตั้งในสภาพแวดล้อมที่กำหนดได้อย่างแม่นยำและรวดเร็ว  โดยจำแนกการเคลื่อนที่ออกเป็น 4 รูปแบบ  ได้แก่  เดินหน้า, หยุด, เลี้ยวซ้าย, และเลี้ยวขวา
+
+**สารบัญ**
+
+ - ขั้นตอนการทำ Dataset และ Ai model
+ - โค้ดในการทดสอบย่อยต่างๆ 
+ - โค้ดที่เสร็จสมบูรณ์
+ - ผลการทดลอง
+
+**ขั้นตอนการทำ Dataset และ Ai model**
+
+ - เตรียมรูปที่เราจะทำการสร้าง dataset ใส่ folder โดยแต่ละชนิดของป้ายใช้อย่างต่ำ 10 รูป
+ - ติดตั้ง Label studio เพื่อทำการสร้าง dataset
+
+    pip install label-syudio
+
+ - ใส่คำสั่ง start เพื่อทำการเปิด label studio
+
+
+    label-studio start
+	 
+
+ - เข้าหน้า label studio ได้แล้วทำการสร้างบัญชี และเลือก create
+   project
+   
+
+ - ตั้งชื่อ project และทำการ upload folder ที่ทำการเตรียมไว้แล้วในขั้นตอนที่ 1    
+
+ - ไปที่ช่อง label setup เลือก label เครื่องบินละลบชื่อคลาสออก ใส่ชื่อที่เราจะทำการสร้างและกด add เพื่อทำการตีกรอบ  
+ -  ทำการตีกรอบรูปทั้งหมดและ export โดยเลือก YOLO เพื่อเข้าสู่การเทรนในขั้นตอนต่อไป  
+ - เข้าลิงค์เทรนของ google colab ปรับ runtime เลือก T4 GPU และทำตามขั้นตอนในแต่ละบล็อกตามลิงค์
+    https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/train-yolov8-classification-on-custom-dataset.ipynb
+
+ **โค้ดในการทดสอบย่อยต่างๆ** 
+  
+
+ - **Code check open webcam camera**
+
+  เอาไว้ใช้ทดสอบการแสดงผลวิดีโอจากเว็บแคมและควบคุมการตั้งค่าพื้นฐานของกล้อง
+
+    import cv2
+    import argparse
+    import time
+    
+    def parse_args():
+        ap = argparse.ArgumentParser()
+        ap.add_argument("--width", type=int, default=640)
+        ap.add_argument("--height", type=int, default=480)
+        ap.add_argument("--fps", type=int, default=30)
+        ap.add_argument("--index", type=int, default=1, help="Webcam index (usually 0 or 1)")
+        return ap.parse_args()
+    def main():
+        args = parse_args()
+        CAMERA_INDEX = args.index
+        
+        print(f"Opening webcam at index {CAMERA_INDEX}...")
+        cap = cv2.VideoCapture(CAMERA_INDEX)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+        cap.set(cv2.CAP_PROP_FPS, args.fps)
+
+    if not cap.isOpened():
+        print(f"Error: Could not open webcam at index {CAMERA_INDEX}")
+        return
+
+    print(f"Webcam opened. Press 'q' to exit.")
+
+    try:
+        while True:
+      
+            ret, frame = cap.read() 
+            
+            if not ret:
+                print("Error: Failed to capture image from webcam.")
+                break
+
+
+            cv2.imshow('Webcam Feed (Press Q to exit)', frame)
+            
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
+            time.sleep(0.01) 
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Webcam viewer stopped.")
+    if _name_ == "_main_":
+        main()
+
+ - **Code check YOLO**
+
+ใช้ในการตรวจจับวัตถุแบบเรียลไทม์ โดยเฉพาะ เพื่อใช้ทดสอบโมเดล YOLOv8 ที่ผ่านการเทรนแล้วร่วมกับวิดีโอจากเว็บแคม .
+
+
+
+    import argparse
+    import cv2
+    import torch
+    from ultralytics import YOLO
+    import numpy as np
+    import time
+    
+    def parse_args():
+        ap = argparse.ArgumentParser(description="YOLOv8 Real-Time Detection for Testing.")
+        ap.add_argument("--model", type=str, default="best.pt", help="Path to YOLO model weights.")
+        ap.add_argument("--imgsz", type=int, default=480, help="Inference size (square).")
+        ap.add_argument("--conf", type=float, default=0.2, help="Confidence threshold.")
+        ap.add_argument("--width", type=int, default=640, help="Camera width.")
+        ap.add_argument("--height", type=int, default=480, help="Camera height.")
+        ap.add_argument("--fps", type=int, default=30, help="Camera FPS.")
+        ap.add_argument("--skip", type=int, default=0, help="Skip N frames between inference.")
+        ap.add_argument("--device", type=str, default="cpu", help="Device to use (e.g., 'cpu' or 'cuda:0').")
+        return ap.parse_args()
+    
+    def run_yolo_test():
+        args = parse_args()
+ 
+        try:
+            model = YOLO(args.model)
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            print("Please check if 'best.pt' exists in the current directory.")
+            return
+
+        device = args.device
+        if device != "cpu" and not torch.cuda.is_available():
+            device = "cpu"
+        model.to(device)
+
+
+        CAMERA_INDEX = 1  
+        cap = cv2.VideoCapture(CAMERA_INDEX)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+        cap.set(cv2.CAP_PROP_FPS, args.fps)
+
+        if not cap.isOpened():
+            print(f"Error: Could not open webcam at index {CAMERA_INDEX}")
+            return
+    
+        time.sleep(0.2)
+
+        print("Warming up YOLO model...")
+        _ = model(np.zeros((args.height, args.width, 3), dtype=np.uint8),
+                  imgsz=args.imgsz, conf=args.conf, verbose=False)
+        print("Ready. Press 'q' to exit.")
+
+        frame_i = 0
+        start_time = time.time()
+        try:
+            while True:
+                ret, bgr = cap.read() # อ่านภาพ
+                if not ret:
+                    print("Error: Failed to capture image from webcam.")
+                    break
+            
+                do_infer = (args.skip == 0) or (frame_i % (args.skip + 1) == 0)
+
+                if do_infer:
+                    results = model(bgr, imgsz=args.imgsz, conf=args.conf, verbose=False)
+                
+                    annotated_frame = results[0].plot()
+
+                else:
+                    if 'annotated_frame' not in locals():
+                        annotated_frame = bgr.copy()
+            
+
+                cv2.putText(annotated_frame, f"FPS: {cap.get(cv2.CAP_PROP_FPS):.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.imshow('YOLO Test Display (Press Q to Quit)', annotated_frame)
+            
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            
+                frame_i += 1
+
+        except KeyboardInterrupt:
+            pass
+        finally:
+            cap.release()
+            cv2.destroyAllWindows()
+            print("\nProgram terminated.")
+    if _name_ == "_main_":
+        run_yolo_test()
+
+
+    
+
+
+
+
+
+
+
+ 
+
+
+
+
