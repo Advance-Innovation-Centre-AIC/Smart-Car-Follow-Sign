@@ -4,13 +4,11 @@ import time
 import argparse
 import torch
 from ultralytics import YOLO
-import supervision as sv # นำเข้า supervision เพื่อใช้ sv.Detections และ F1Score
+import supervision as sv 
 from supervision.metrics import F1Score
 
-# --- ส่วนที่ 1: YOLO WebCam Inference (การตรวจจับพร้อม Argument Parser) ---
 
 def parse_args():
-    """ตั้งค่า argument สำหรับโมเดลและกล้อง"""
     ap = argparse.ArgumentParser(description="YOLOv8 Real-Time Detection and F1 Score Simulation.")
     ap.add_argument("--model", type=str, default="/home/bosss/best.pt", help="Path to YOLO model weights (e.g., yolov8n.pt or best.pt).")
     ap.add_argument("--imgsz", type=int, default=480, help="Inference size (square).")
@@ -19,25 +17,20 @@ def parse_args():
     return ap.parse_args()
 
 def run_yolo_test():
-    """รัน YOLO Detection บน Webcam และแสดงผล"""
     print("--- 1. เริ่ม YOLO WebCam Inference ---")
-    
-    # ตรวจสอบว่ามีการส่ง Argument เข้ามาหรือไม่ (ใช้ค่า Default ถ้าไม่มี)
+
+
     try:
         args = parse_args()
     except SystemExit:
-        # กรณีรันในสภาพแวดล้อมที่ไม่ได้รองรับ sys.argv (เช่น บาง IDE)
         class MockArgs:
-            # แก้ไขเส้นทางโมเดลให้เป็นค่าเริ่มต้นที่พบบ่อย หากไม่ต้องการใช้ Hardcode
-            # หากต้องการใช้ Hardcode เดิม: model = "/home/bosss/best.pt"
+"
             model = "/home/bosss/best.pt" 
             imgsz = 240
             conf = 0.25
             device = "cpu"
         args = MockArgs()
 
-
-    # 1. โหลดโมเดล YOLO
     try:
         model = YOLO(args.model)
     except Exception as e:
@@ -53,7 +46,7 @@ def run_yolo_test():
     model.to(device)
 
     # 2. ตั้งค่ากล้อง
-    CAMERA_INDEX = 1  # 0 คือกล้องหลักของระบบ
+    CAMERA_INDEX = 1 
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
     if not cap.isOpened():
@@ -93,27 +86,18 @@ def run_yolo_test():
         cv2.destroyAllWindows()
         print("--- สิ้นสุด YOLO WebCam Inference ---")
 
-# ----------------------------------------------------------------------
 
-## --- ส่วนที่ 2: F1 Score Simulation (โค้ดสำหรับประเมินผล) ---
 
 def simulate_f1_score():
-    """
-    ฟังก์ชันสำหรับจำลองการคำนวณ F1 Score บนชุดข้อมูลสมมติ (ใช้สำหรับการประเมินโมเดล)
-    """
+ 
     print("\n--- 2. เริ่มจำลองการคำนวณ F1 Score (Validation) ---")
-    
-    # กำหนดคลาสที่ใช้ในการประเมิน (0=person, 1=bicycle ในข้อมูลจำลองนี้)
     class_ids_to_evaluate = [0, 1] 
-
-    # สร้าง F1Score Calculator ที่ IoU 0.50
     f1_calculator = F1Score(
         class_ids=class_ids_to_evaluate, 
         iou_threshold=0.5
     )
 
-    # --- ข้อมูลจำลองสำหรับ 2 รูปภาพ (Ground Truth vs. Prediction) ---
-    # *ภาพที่ 1:* Perfect Match
+
     targets_1 = sv.Detections(
         xyxy=np.array([[10, 10, 100, 100], [200, 200, 300, 300]]),
         class_id=np.array([0, 1])
@@ -124,7 +108,7 @@ def simulate_f1_score():
         confidence=np.array([0.9, 0.8])
     )
     
-    # *ภาพที่ 2:* มี False Positive (FP) และ False Negative (FN)
+
     targets_2 = sv.Detections(
         xyxy=np.array([[10, 10, 100, 100], [400, 400, 500, 500]]), # GT มี 2 คน
         class_id=np.array([0, 0])
