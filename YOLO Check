@@ -1,0 +1,102 @@
+import argparse
+import cv2
+import torch
+from ultralytics import YOLO
+import numpy as np
+import time
+
+def parse_args():
+    """ตั้งค่า argument สำหรับโมเดลและกล้อง"""
+    ap = argparse.ArgumentParser(description="YOLOv8 Real-Time Detection for Testing.")
+    ap.add_argument("--model", type=str, default="best.pt", help="Path to YOLO model weights.")
+    ap.add_argument("--imgsz", type=int, default=480, help="Inference size (square).")
+    ap.add_argument("--conf", type=float, default=0.2, help="Confidence threshold.")
+    ap.add_argument("--width", type=int, default=640, help="Camera width.")
+    ap.add_argument("--height", type=int, default=480, help="Camera height.")
+    ap.add_argument("--fps", type=int, default=30, help="Camera FPS.")
+    ap.add_argument("--skip", type=int, default=0, help="Skip N frames between inference.")
+    ap.add_argument("--device", type=str, default="cpu", help="Device to use (e.g., 'cpu' or 'cuda:0').")
+    return ap.parse_args()
+
+def run_yolo_test():
+    """รัน YOLO Detection บน Webcam และแสดงผล"""
+    args = parse_args()
+
+    # 1. โหลดโมเดล YOLO
+    try:
+        model = YOLO(args.model)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        print("Please check if 'best.pt' exists in the current directory.")
+        return
+
+    device = args.device
+    if device != "cpu" and not torch.cuda.is_available():
+        device = "cpu"
+    model.to(device)
+
+    # 2. ตั้งค่ากล้อง
+    CAMERA_INDEX = 1  # 0 คือกล้องหลักของระบบ
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+    cap.set(cv2.CAP_PROP_FPS, args.fps)
+
+    if not cap.isOpened():
+        print(f"Error: Could not open webcam at index {CAMERA_INDEX}")
+        return
+    
+    time.sleep(0.2)
+
+    # Warmup YOLO
+    print("Warming up YOLO model...")
+    _ = model(np.zeros((args.height, args.width, 3), dtype=np.uint8),
+              imgsz=args.imgsz, conf=args.conf, verbose=False)
+    print("Ready. Press 'q' to exit.")
+
+    frame_i = 0
+    start_time = time.time()
+    
+    try:
+        while True:
+            ret, bgr = cap.read() # อ่านภาพ
+            if not ret:
+                print("Error: Failed to capture image from webcam.")
+                break
+            
+            # 3. รัน Inference ตามการตั้งค่า --skip
+            do_infer = (args.skip == 0) or (frame_i % (args.skip + 1) == 0)
+
+            if do_infer:
+                # รัน YOLO prediction
+                results = model(bgr, imgsz=args.imgsz, conf=args.conf, verbose=False)
+                
+                # ใช้ .plot() เพื่อวาดกล่อง Bounding Box และ Label บนภาพทันที
+                annotated_frame = results[0].plot()
+
+            else:
+                # ถ้า skip ให้ใช้ภาพสุดท้ายที่มีการวาดแล้ว (ถ้ามี) หรือใช้ภาพดิบ
+                if 'annotated_frame' not in locals():
+                    annotated_frame = bgr.copy()
+            
+            # 4. แสดงผลบนหน้าจอ
+            cv2.putText(annotated_frame, f"FPS: {cap.get(cv2.CAP_PROP_FPS):.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.imshow('YOLO Test Display (Press Q to Quit)', annotated_frame)
+            
+            # ตรวจสอบการกด 'q' เพื่อออก
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
+            frame_i += 1
+            # time.sleep(0.01) # พักเล็กน้อย
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        print("\nProgram terminated.")
+
+if _name_ == "_main_":
+    run_yolo_test()
