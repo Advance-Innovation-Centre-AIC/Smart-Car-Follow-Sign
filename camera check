@@ -1,0 +1,60 @@
+import cv2
+import argparse
+import time
+
+def parse_args():
+    """ตั้งค่าพารามิเตอร์ของกล้อง"""
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--width", type=int, default=640)
+    ap.add_argument("--height", type=int, default=480)
+    ap.add_argument("--fps", type=int, default=30)
+    ap.add_argument("--index", type=int, default=1, help="Webcam index (usually 0 or 1)")
+    return ap.parse_args()
+
+def main():
+    args = parse_args()
+    CAMERA_INDEX = args.index
+
+    # 1. ตั้งค่าและเปิดกล้อง Webcam โดยใช้ OpenCV
+    print(f"Opening webcam at index {CAMERA_INDEX}...")
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+
+    # ตั้งค่าความละเอียดและ FPS
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+    cap.set(cv2.CAP_PROP_FPS, args.fps)
+
+    if not cap.isOpened():
+        print(f"Error: Could not open webcam at index {CAMERA_INDEX}")
+        return
+
+    print(f"Webcam opened. Press 'q' to exit.")
+
+    try:
+        while True:
+            # 2. อ่านภาพจากกล้อง
+            ret, frame = cap.read() 
+            
+            if not ret:
+                print("Error: Failed to capture image from webcam.")
+                break
+
+            # 3. แสดงผลภาพในหน้าต่าง
+            cv2.imshow('Webcam Feed (Press Q to exit)', frame)
+            
+            # 4. ตรวจสอบการกดปุ่ม 'q' เพื่อออกจากลูป
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
+            time.sleep(0.01) # ผ่อนรอบลูปเล็กน้อย
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # 5. ปิดกล้องและปิดหน้าต่างทั้งหมด
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Webcam viewer stopped.")
+
+if _name_ == "_main_":
+    main()
