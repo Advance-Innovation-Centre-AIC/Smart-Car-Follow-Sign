@@ -38,6 +38,10 @@
  - **Code check open webcam camera**
 
   เอาไว้ใช้ทดสอบการแสดงผลวิดีโอจากเว็บแคมและควบคุมการตั้งค่าพื้นฐานของกล้อง
+   - ไลบรารีที่ต้องลงก่อน
+   - pip install opencv-python
+   - sudo apt install libopencv-dev python3-opencv
+        
 
     import cv2
     import argparse
@@ -97,6 +101,10 @@
  - **Code check YOLO**
 
 ใช้ในการตรวจจับวัตถุแบบเรียลไทม์ โดยเฉพาะ เพื่อใช้ทดสอบโมเดล YOLOv8 ที่ผ่านการเทรนแล้วร่วมกับวิดีโอจากเว็บแคม .
+   - ไลบรารีที่ต้องลงก่อน
+   - pip install ultralytics
+   - pip install opencv-python
+   - pip install torch
 
 
 
@@ -193,7 +201,13 @@
   - **Code คำนวณค่าของ F1 score**
 
   เป็นการทดสอบการตรวจจับวัตถุ YOLOv8 และการจำลองการคำนวณเมตริก F1 Scoreสำหรับการประเมินผลโมเดล
-   
+     
+ - ไลบรารีที่ต้องลงก่อน
+ - pip install ultralytics torch 
+ - pip install opencv-python 
+ - pip install supervision
+
+	  
 
    
 
@@ -314,8 +328,14 @@
              simulate_f1_score()
     
 **โค้ดที่เสร็จสมบูรณ์**
+ - ไลบรารีที่ต้องลงก่อน
+ - pip install ultralytics torch 
+ - pip install opencv-python 
+ - pip install scikit-image
+ - sudo apt install python3-rpi.gpio
 
-    
+   
+   
        import time
        import atexit
        import argparse, cv2, torch
